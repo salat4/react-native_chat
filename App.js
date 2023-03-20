@@ -1,36 +1,89 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, View,Button} from 'react-native';
 import axios from 'axios';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Login from './screens/Login'
+import Main from './screens/Main'
+import Registration from './screens/Registration'
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
 export default function App() {
-  
+  const [userData, setUserData] = useState(null);
 
-const SERVER_URL = 'http://localhost:5000';
+  const Stack = createNativeStackNavigator();
 
-const sendMessage = async (message) => {
-  try {
-    const response = await axios.post(`${SERVER_URL}/send`, { message });
-    console.log(response.data);
-  } catch (error) {
-    console.error(error);
-  }
-};
+  const removeValue = async () => {
+    try {
+      await AsyncStorage.removeItem('@user');
+    } catch (e) {
+      // remove error
+    }
+  };
 
-useEffect(()=>{
-  // sendMessage()
-  axios.post('http://localhost:5000/users', { name: 'John Doe' })
-  .then(response => {
-    console.log(response.data);
-  })
-  .catch(error => {
-    console.error(error);
+  useEffect(() => {
+    // removeValue()
+  }, []);
+
+  const getData = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('@user');
+      return jsonValue !== null && jsonValue !== "null" ? JSON.parse(jsonValue) : null;
+    } catch (e) {
+      // error reading value
+      console.error(e);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    getData().then((data) => {
+      setUserData(data); // зберігаємо значення в стані
+    }).catch((error) => {
+      console.error(error);
+      setUserData(null); // у випадку помилки, також зберігаємо null
+    });
   });
-},[])
+
+  useEffect(()=>{
+    console.log(userData,'userData')
+  })
+  // console.log(userData, "userData");
+
   return (
-    <View style={styles.container}>
-      {/* <Text>Open up App.js to start working on your app!</Text> */}
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator>
+        {userData === null ? (
+          <>
+            <Stack.Screen name="Login" component={Login} />
+            <Stack.Screen name="Registration" component={Registration} />
+          </>
+        ) : (
+          <Stack.Screen
+            name="Home"
+            component={Main}
+            options={{
+              title: "Chat",
+              headerLeft: null,
+              headerRight: () => (
+                <Button
+                  onPress={async () => {
+                    try {
+                      await AsyncStorage.removeItem('@user');
+                      setUserData(null);
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  }}
+                  title="Logout"
+                />
+              )
+            }}
+          />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
